@@ -97,7 +97,9 @@ for {k in 0..nfe}{
        let M2_0[j,k] :=M2set[j]+ (M2ref[j] - M2set[j])*k/nfe ;       
     };   
 };       
-       
+
+# initialize final collocation point as next finite element point
+# shouldn't this be a continuity constraint somewhere? 
 for {i in 1..NT}{       
        	 for  {f in fe}{
        	    	for {j in 1..2}{
@@ -109,7 +111,7 @@ for {i in 1..NT}{
        	 };
   };     	    
        	     
-       
+# initialize other collocation points linearly       
  for {i in 1..NT}{
  	for {f in fe}{
  		for {c in 1..2}{
@@ -122,7 +124,7 @@ for {i in 1..NT}{
             };
             };
             };
-            
+# initialize y11 etc via x, alpha in the same way y_1_1_0 etc was initialized in the model file  
 for { i in 1..NT-1}{
 	for {j in 1..2}{
 		for {f in fe}{
@@ -137,7 +139,8 @@ for { i in 1..NT-1}{
                   };
                   };
                   };
-                  
+
+# constant vapor flow rate below feed
 for {i in 1..NF-1}{
 	for {f in fe}{
 		let V1[i,f] := VB1[f] ;
@@ -146,14 +149,16 @@ for {i in 1..NF-1}{
 		 }; 
 		
 		
-		
+# constant vapor flow rate above feed 		
 for {i in NF..NT-1}{
 	for {f in fe}{		
           let V1[i,f] := VB1[f] + (1-qF[f])*F[f] ;
           let V2[i,f] := VB2[f] ; 
           };
           };
-          
+        
+
+# Initialize liquid flow rates according to weir formula
 	for {f in fe}{
 		for {c in cp}{
 			for {i in 2..NF}{
@@ -168,7 +173,7 @@ for {i in NF..NT-1}{
                 let L2[NT,f,c] := LT2[f]; 
           };
    };       
-   
+# Same for *_0 version, which I still don't understand
    	for {f in fe}{
 		for {i in 2..NF}{
 			let L1_0[i,f] := Kbf*( (M1_0[i,f] - Muw+sqrt((M1_0[i,f] - Muw)^2+10^(-8)))/2    )^1.5 ;
@@ -182,6 +187,7 @@ for {i in NF..NT-1}{
                 let L2_0[NT,f] := LT2[f]; 
    };  	
 
+# Initialize TC's as linear combination of component temperatures...
 for {i in 1..NT}{
 	for {f in fe}{
 		let TC1[i,f] := x1_0[i,1,f]*353.3 + x1_0[i,2,f]*383.8 + (1-x1_0[i,1,f]-x1_0[i,2,f])*411.5 ;
@@ -189,6 +195,7 @@ for {i in 1..NT}{
 };
 };      
 
+# Initialize flow rates and component flow rates with mass balances 
 for {f in fe}{
 	for {c in cp}{
 let M2dot[1,f,c]:=L2[2,f,c] - V2[1,f] - B2[f];
@@ -234,6 +241,7 @@ let Mx1dot[NF,j,f,c]:=L1[NF+1,f,c]*x1[NF+1,j,f,c] - L1[NF,f,c]*x1[NF,j,f,c] + V1
 
 #Mx1dot,Mx2dot;
 
+# get random noise for disturbance rejection. 
 let {k in 0..K-1} F_rand[k] := Normal(0,F_dev) ;
 let {k in 0..K-1, i in 1..2} zF_rand[k,i] := Normal(0,zF_dev) ;
 let {k in 0..K-1} zF_rand[k,3] := 1 - zF_rand[k,1] - zF_rand[k,2] ;

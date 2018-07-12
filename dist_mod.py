@@ -31,11 +31,11 @@ m.set_1_2 = Set(initialize=[1,2])
 # -----
 m.sig          = Param(initialize=0.9)
 m.K            = Param(initialize=100) # tf? Probably the number of times the dynopt problem is solved... In which case this is not necessary in this file, but I'll include it anyway...
-m.econ_switch  = Param(initialize=1)
-m.track_switch = Param(initialize=0) 
+m.econ_switch  = Param(initialize=0)
+m.track_switch = Param(initialize=1) 
 m.pen_switch   = Param(initialize=1)
 m.noise_switch = Param(initialize=0)
-m.regu_frac    = Param(initialize=1)
+m.regu_frac    = Param(initialize=0)
 m.rho          = Param(initialize=10**4)
 m.smt          = Param(initialize=0.01)
 m.F_dev        = Param(initialize=0.1)
@@ -1814,58 +1814,62 @@ def tracking_rule(m,f):
            for i in m.set_1_NT) 
 m.tracking = Expression(m.fe,rule=tracking_rule) 
 
-def regu_1_rule(m,f):
-    return  m.F_w*(m.F[f] - m.Fref)**2 +  m.qF_w*(m.qF[f] - m.qFref)**2 + \
-           m.pV_w*(m.pV[f]-m.pVref)**2 + m.VB1_w*(m.VB1[f]-m.VB1ref)**2 + \
-           m.VB2_w*(m.VB2[f]-m.VB2ref)**2 + m.LT1_w*(m.LT1[f]-m.LT1ref)**2 + \
-           m.LT2_w*(LT2[f]-m.LT2ref)**2 
-m.regu_1 = Expression(m.fe,rule=regu_1_rule)
-
-def regu_2_rule(m,f):
-    return m.D1_w*(m.D1[f]-m.D1ref)**2 + m.B1_w*(m.B1[f]-m.B1ref)**2 + \
-           m.D2_w*(m.D2[f]-m.D2ref)**2 + m.B2_w*(m.B2[f]-m.B2ref)**2 
-m.regu_2 = Expression(m.fe,rule=regu_2_rule)
-
-def regu_M_TC_rule(m,f):
-    return sum(m.M1_w[i]*(m.M1_0[i,f]-m.M2ref[i])**2 + m.M2_w[i]*(m.M2_0[i,f]-m.M2ref[i])**2+\
-               m.TC1_w[i]*(m.TC1[i,f]-m.TC1ref[i])**2 + m.TC2_w*(m.TC2[i,f]-m.TC2ref[i])**2 \
-           for i in m.set_1_NT) 
-m.regu_M_TC = Expression(m.fe,rule=regu_2_rule)
-
-def regu_x_y_rule(m,f):
-    return sum( sum( m.x1_w*(m.x1_0[i,j,f]-m.x1ref[i,j])**2 + \
-                     m.x2_w*(m.x2_0[i,j,f]-m.x2ref[i,j])**2    \
-                     for j in m.set_1_2) for i in m.set_1_NT) + \
-           sum( sum( m.y1_w*(m.y1_0[i,j,f]-m.y1ref[i,j])**2 + \
-                     m.y2_w*(m.y2_0[i,j,f]-m.y2ref[i,j])**2 \
-                     for j in m.set_1_2) for i in m.set_1_NTm1) 
-m.regu_x_y = Expression(m.fe,rule=regu_x_y_rule)
-
-def regu_V_L_rule(m,f):
-    return sum( m.V1_w[i]*(m.V1[i,f]-m.V1ref[i])**2 + m.V2_w[i]*(m.V2[i,f]-m.V2ref[i])**2 \
-           for i in m.set_1_NTm1) + \
-           sum( m.L1_w[i]*(m.L1_0[i,f]-m.L1ref[i])**2 + m.L2_w[i]*(m.L2_0[i,f]-m.L2ref[i])**2 \
-           for i in m.set_2_NT) 
-m.regu_V_L = Expression(m.fe,rule=regu_V_L_rule)
-
-def regu_y_rule(m,f):
-    return sum( sum( m.y_1_1_w[i,j]*(m.y_1_1_0[i,j,f]-m.y_1_1ref[i,j])**2 + \
-                     m.y_1_2_w[i,j]*(m.y_1_2_0[i,j,f]-m.y_1_2ref[i,j])**2 + \
-                     m.y_2_1_w[i,j]*(m.y_2_1_0[i,j,f]-m.y_2_1ref[i,j])**2 + \
-                     m.y_2_2_w[i,j]*(m.y_2_2_0[i,j,f]-m.y_2_2ref[i,j])**2   \
-                for j in m.set_1_2) for i in m.set_1_NTm1) 
-m.regu_y = Expression(m.fe,rule=regu_y_rule)
-
-def regu_rule(m,f):
-    return m.regu_1[f] +m.regu_2[f] +m.regu_M_TC[f] +m.regu_x_y[f] +m.regu_V_L[f] +m.regu_y[f]
-m.regu = Expression(m.fe,rule=regu_rule)
+# def regu_1_rule(m,f):
+#     return  m.F_w*(m.F[f] - m.Fref)**2 +  m.qF_w*(m.qF[f] - m.qFref)**2 + \
+#            m.pV_w*(m.pV[f]-m.pVref)**2 + m.VB1_w*(m.VB1[f]-m.VB1ref)**2 + \
+#            m.VB2_w*(m.VB2[f]-m.VB2ref)**2 + m.LT1_w*(m.LT1[f]-m.LT1ref)**2 + \
+#            m.LT2_w*(LT2[f]-m.LT2ref)**2 
+# m.regu_1 = Expression(m.fe,rule=regu_1_rule)
+# 
+# def regu_2_rule(m,f):
+#     return m.D1_w*(m.D1[f]-m.D1ref)**2 + m.B1_w*(m.B1[f]-m.B1ref)**2 + \
+#            m.D2_w*(m.D2[f]-m.D2ref)**2 + m.B2_w*(m.B2[f]-m.B2ref)**2 
+# m.regu_2 = Expression(m.fe,rule=regu_2_rule)
+# 
+# def regu_M_TC_rule(m,f):
+#     return sum(m.M1_w[i]*(m.M1_0[i,f]-m.M2ref[i])**2 + m.M2_w[i]*(m.M2_0[i,f]-m.M2ref[i])**2+\
+#                m.TC1_w[i]*(m.TC1[i,f]-m.TC1ref[i])**2 + m.TC2_w*(m.TC2[i,f]-m.TC2ref[i])**2 \
+#            for i in m.set_1_NT) 
+# m.regu_M_TC = Expression(m.fe,rule=regu_2_rule)
+# 
+# def regu_x_y_rule(m,f):
+#     return sum( sum( m.x1_w*(m.x1_0[i,j,f]-m.x1ref[i,j])**2 + \
+#                      m.x2_w*(m.x2_0[i,j,f]-m.x2ref[i,j])**2    \
+#                      for j in m.set_1_2) for i in m.set_1_NT) + \
+#            sum( sum( m.y1_w*(m.y1_0[i,j,f]-m.y1ref[i,j])**2 + \
+#                      m.y2_w*(m.y2_0[i,j,f]-m.y2ref[i,j])**2 \
+#                      for j in m.set_1_2) for i in m.set_1_NTm1) 
+# m.regu_x_y = Expression(m.fe,rule=regu_x_y_rule)
+# 
+# def regu_V_L_rule(m,f):
+#     return sum( m.V1_w[i]*(m.V1[i,f]-m.V1ref[i])**2 + m.V2_w[i]*(m.V2[i,f]-m.V2ref[i])**2 \
+#            for i in m.set_1_NTm1) + \
+#            sum( m.L1_w[i]*(m.L1_0[i,f]-m.L1ref[i])**2+m.L2_w[i]*(m.L2_0[i,f]-m.L2ref[i])**2 \
+#            for i in m.set_2_NT) 
+# m.regu_V_L = Expression(m.fe,rule=regu_V_L_rule)
+# 
+# def regu_y_rule(m,f):
+#     return sum( sum( m.y_1_1_w[i,j]*(m.y_1_1_0[i,j,f]-m.y_1_1ref[i,j])**2 + \
+#                      m.y_1_2_w[i,j]*(m.y_1_2_0[i,j,f]-m.y_1_2ref[i,j])**2 + \
+#                      m.y_2_1_w[i,j]*(m.y_2_1_0[i,j,f]-m.y_2_1ref[i,j])**2 + \
+#                      m.y_2_2_w[i,j]*(m.y_2_2_0[i,j,f]-m.y_2_2ref[i,j])**2   \
+#                 for j in m.set_1_2) for i in m.set_1_NTm1) 
+# m.regu_y = Expression(m.fe,rule=regu_y_rule)
+# 
+# def regu_rule(m,f):
+#     return m.regu_1[f] +m.regu_2[f] +m.regu_M_TC[f] +m.regu_x_y[f] +m.regu_V_L[f] +m.regu_y[f]
+# m.regu = Expression(m.fe,rule=regu_rule)
 
 def penalty_rule(m,f):
     return m.penalty_2[f] + m.penalty_M_TC[f] + m.penalty_x_y[f] + m.penalty_V_L[f] 
 m.penalty = Expression(m.fe,rule=penalty_rule)
 
-def obj_rule(m):
-    return m.rho*m.pen_switch*(m.termeps+m.desceps) + sum(m.econ_switch*m.cost[f] + m.rho*m.pen_switch*m.penalty[f] + m.regu_frac*m.regu[f] + m.track_switch*m.tracking[f] for f in m.fe)
+#def obj_rule(m):
+#    return m.rho*m.pen_switch*(m.termeps+m.desceps) + sum(m.econ_switch*m.cost[f] + m.rho*m.pen_switch*m.penalty[f] + m.regu_frac*m.regu[f] + m.track_switch*m.tracking[f] for f in m.fe)
+
+def objtr_rule(m):
+    return m.rho*m.pen_switch*(m.termeps+m.desceps) + sum(m.rho*m.pen_switch*m.penalty[f] + m.track_switch*m.tracking[f] for f in m.fe)
+m.obj = Objective(rule=objtr_rule) 
 
 
 
