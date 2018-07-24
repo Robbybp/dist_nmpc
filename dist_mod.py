@@ -1880,7 +1880,7 @@ m.penalty_V_L = Expression(m.fe,rule=penalty_V_L_rule)
 
 
 def tracking_rule(m,f):
-    return (m.VB1[f]-m.VB1ref)**2 + (m.VB2[f]-m.VB2ref)**2 + \(m.LT1[f]-m.LT1ref)**2 + \
+    return (m.VB1[f]-m.VB1ref)**2 + (m.VB2[f]-m.VB2ref)**2 + (m.LT1[f]-m.LT1ref)**2 + \
            (m.LT2[f]-m.LT2ref)**2 + (m.D1[f] - m.D1ref)**2 + (m.B1[f] - m.B1ref)**2 + \
            (m.D2[f] - m.D2ref)**2 + (m.B2[f] - m.B2ref)**2 + \
            sum(     (m.M1_0[i,f]  -  m.M1ref[i])**2 + (m.M2_0[i,f]  -  m.M2ref[i])**2 + \
