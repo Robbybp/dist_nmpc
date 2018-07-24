@@ -1816,7 +1816,13 @@ m.const44 = Constraint(m.set_1_NT,m.fep,rule=const44_rule)
 # m.termcon_m2 = Constraint(m.set_1_NT,rule=termcon_m2_rule) 
 
 def termcon_rule(m):
-    return sum( sum( ((m.x1_0[i,j,m.nfe]-m.x1ref[i,j])**2 + (m.x2_0[i,j,m.nfe] - m.x2ref[i,j])**2 ) for j in m.set_1_2) for i in m.set_1_NT) + sum( (m.M1_0[i,m.nfe] - m.M1ref[i])**2 + (m.M2_0[i,m.nfe]-m.M2ref[i])**2 for i in m.set_1_NT) <= m.termeps 
+    return sum( sum( ((m.x1_0[i,j,m.nfe]-m.x1ref[i,j])**2 + \
+        (m.x2_0[i,j,m.nfe] - m.x2ref[i,j])**2 ) \
+        for j in m.set_1_2) \
+        for i in m.set_1_NT) + \
+        sum( (m.M1_0[i,m.nfe] - m.M1ref[i])**2 + \
+        (m.M2_0[i,m.nfe]-m.M2ref[i])**2 \
+        for i in m.set_1_NT) <= m.termeps 
 m.termcon = Constraint(rule=termcon_rule)
 
 ##########################
@@ -1862,16 +1868,19 @@ def penalty_M_TC_rule(m,f):
 m.penalty_M_TC = Expression(m.fe,rule=penalty_M_TC_rule)
 
 def penalty_x_y_rule(m,f):
-    return m.x2ceps[f] + sum( sum( m.x1eps[i,j,f] + m.x2eps[i,j,f] for j in m.set_1_2) for i in m.set_1_NT) 
+    return m.x2ceps[f] + sum( sum( m.x1eps[i,j,f] + m.x2eps[i,j,f] 
+        for j in m.set_1_2) 
+        for i in m.set_1_NT) 
 m.penalty_x_y = Expression(m.fe,rule=penalty_x_y_rule)
 
 def penalty_V_L_rule(m,f):
-    return sum( m.V1eps[i,f] + m.V2eps[i,f] for i in m.set_1_NTm1) +sum(m.L1eps[i,f]+m.L2eps[i,f] for i in m.set_2_NT)
+    return sum( m.V1eps[i,f] + m.V2eps[i,f] for i in m.set_1_NTm1) +\
+            sum(m.L1eps[i,f]+m.L2eps[i,f] for i in m.set_2_NT)
 m.penalty_V_L = Expression(m.fe,rule=penalty_V_L_rule)
 
 
 def tracking_rule(m,f):
-    return (m.VB1[f]-m.VB1ref)**2 + (m.VB2[f]-m.VB2ref)**2 + (m.LT1[f]-m.LT1ref)**2 + \
+    return (m.VB1[f]-m.VB1ref)**2 + (m.VB2[f]-m.VB2ref)**2 + \(m.LT1[f]-m.LT1ref)**2 + \
            (m.LT2[f]-m.LT2ref)**2 + (m.D1[f] - m.D1ref)**2 + (m.B1[f] - m.B1ref)**2 + \
            (m.D2[f] - m.D2ref)**2 + (m.B2[f] - m.B2ref)**2 + \
            sum(     (m.M1_0[i,f]  -  m.M1ref[i])**2 + (m.M2_0[i,f]  -  m.M2ref[i])**2 + \
@@ -1927,14 +1936,17 @@ m.tracking = Expression(m.fe,rule=tracking_rule)
 # m.regu = Expression(m.fe,rule=regu_rule)
 
 def penalty_rule(m,f):
-    return m.penalty_2[f] + m.penalty_M_TC[f] + m.penalty_x_y[f] + m.penalty_V_L[f] 
+    return m.penalty_2[f] + m.penalty_M_TC[f] + \
+            m.penalty_x_y[f] + m.penalty_V_L[f] 
 m.penalty = Expression(m.fe,rule=penalty_rule)
 
 #def obj_rule(m):
 #    return m.rho*m.pen_switch*(m.termeps+m.desceps) + sum(m.econ_switch*m.cost[f] + m.rho*m.pen_switch*m.penalty[f] + m.regu_frac*m.regu[f] + m.track_switch*m.tracking[f] for f in m.fe)
 
 def objtr_rule(m):
-    return m.rho*m.pen_switch*(m.termeps+m.desceps) + sum(m.rho*m.pen_switch*m.penalty[f] + m.track_switch*m.tracking[f] for f in m.fe)
+    return m.rho*m.pen_switch*(m.termeps+m.desceps) + \
+        sum(m.rho*m.pen_switch*m.penalty[f] + \
+        m.track_switch*m.tracking[f] for f in m.fe)
 m.obj = Objective(rule=objtr_rule) 
 
 
