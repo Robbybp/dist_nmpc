@@ -62,7 +62,7 @@ m.set_NF_NTm1   = Set(initialize=range(NF,NT))
 m.set_2_NF      = Set(initialize=range(2,NF+1))
 m.set_NFp1_NTm1 = Set(initialize=range(NF+1,NT))
 m.set_2_NFm1    = Set(initialize=range(2,NF))
-
+m.set_2_NTm1    = Set(initialize=range(2,NT))
 
 # ----
 # Params as vars 
@@ -309,7 +309,7 @@ m.x2ref       = Param(m.set_1_NT,m.set_1_2,
                      (40,1): 2.879588e-02 , (40,2): 9.535181e-01,
                      (41,1): 3.825284e-02 , (41,2): 9.500000e-01 })
 
-m.M1ref       = Param(m.set_1_NT,
+m.M1ref       = Param(m.set_1_NT, mutable=True,
         initialize={  (1): 5.347829e-01 ,
                       (2): 5.833503e-01 ,            
                       (3): 5.833503e-01 ,
@@ -351,7 +351,7 @@ m.M1ref       = Param(m.set_1_NT,
                      (39): 5.902331e-01 ,
                      (40): 5.902331e-01 ,
                      (41): 5.062171e-01  })
-m.M2ref       = Param(m.set_1_NT,
+m.M2ref       = Param(m.set_1_NT, mutable=True,
         initialize={  (1): 5.063857e-01 ,
                       (2): 4.794139e-01 ,            
                       (3): 4.794139e-01 ,
@@ -840,7 +840,7 @@ m.V1_w        = Param(m.set_1_NTm1)
 m.V2_w        = Param(m.set_1_NTm1)          
 m.L1_w        = Param(m.set_2_NT)             
 m.L2_w        = Param(m.set_2_NT)               
-m.D1_2        = Param()        
+m.D1_w        = Param()        
 m.B1_w        = Param()         
 m.D2_w        = Param()           
 m.B2_w        = Param()         
@@ -945,7 +945,11 @@ m.M1lower = Constraint(m.set_1_NT,m.fe,rule=M1lower_rule)
 
 def M1upper_rule(m,i,f,c):
     return m.M1_0[i,f] <= 0.75 + m.M1eps[i,f]
-m.M1upper = Constraint(m.set_1_NT,m.fe,m.cp,rule=M1upper_rule)
+m.M1upper = Constraint(m.set_2_NTm1,m.fe,m.cp,rule=M1upper_rule)
+
+def M1_B_upper_rule(m,i,f,c):
+    return m.M1_0[i,f] <= 6.0 + m.M1eps[i,f]
+m.M1_B_upper = Constraint([1,NT],m.fe,m.cp,rule=M1_B_upper_rule)
 
 def V1lower_rule(m,i,f):
     return m.V1[i,f] >= 0 - m.V1eps[i,f]
@@ -1052,7 +1056,11 @@ m.M2lower = Constraint(m.set_1_NT,m.fe,rule=M2lower_rule)
 
 def M2upper_rule(m,i,f):
     return m.M2_0[i,f] <= 0.75 + m.M2eps[i,f]
-m.M2upper = Constraint(m.set_1_NT,m.fe,rule=M2upper_rule)
+m.M2upper = Constraint(m.set_2_NTm1,m.fe,rule=M2upper_rule)
+
+def M2_B_upper_rule(m,i,f):
+    return m.M2_0[i,f] <= 6.0 + m.M2eps[i,f]
+m.M2_B_upper = Constraint([1,NT],m.fe,rule=M2_B_upper_rule)
 
 def V2lower_rule(m,i,f):
     return m.V2[i,f] >= 0 - m.V2eps[i,f]

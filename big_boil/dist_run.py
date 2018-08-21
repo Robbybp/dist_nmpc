@@ -4,6 +4,7 @@ from pyomo.dae import *
 from dist_mod import m 
 from pyomo.core.kernel.expr import exp,sqrt 
 from numpy.random import normal as nrn 
+import csv
 
 __author__ = 'Robert Parker'
 
@@ -14,6 +15,35 @@ __author__ = 'Robert Parker'
 solver = SolverFactory('ipopt') 
 solver.options['tol'] = 1e-6
 solver.options['max_iter'] = 10000
+
+M1set = {}
+M2set = {}
+M1init = {}
+M2init = {}
+x1init = {}
+x2init = {}
+for i in m.set_1_NT:
+    M1set[i] = m.M1set[i].value
+    M2set[i] = m.M2set[i].value
+for i in m.set_1_NT:
+    m.M1set[i].set_value( m.M1ref[i].value + 0.1*(M1set[i] - m.M1ref[i].value) )
+    m.M2set[i].set_value( m.M2ref[i].value + 0.1*(M2set[i] - m.M2ref[i].value) )
+m.M1set[1].set_value( 3.0 )
+m.M2set[1].set_value( 3.0 )
+m.M1ref[1].set_value( 3.0 )
+m.M2ref[1].set_value( 3.0 )
+m.M1set[m.NT].set_value( 3.0 )
+m.M2set[m.NT].set_value( 3.0 )
+m.M1ref[m.NT].set_value( 3.0 )
+m.M2ref[m.NT].set_value( 3.0 )
+
+# keep track of initial conditions even after *set is replaced:
+for i in m.set_1_NT:
+    M1init = m.M1set[i].value
+    M2init = m.M2set[i].value
+    for j in m.set_1_2:
+        x1init[(i,j)] = m.x1set[i,j].value
+        x2init[(i,j)] = m.x2set[i,j].value
 
 for j in m.set_1_NT:
     m.state_act[j,0].set_value(m.x1set[j,1]) 
@@ -62,8 +92,8 @@ for k in m.fep:
         for p in m.set_1_2:
             m.x1_0[j,p,k].set_value( m.x1set[j,p].value + k/m.nfe*(m.x1ref[j,p] - m.x1set[j,p].value) ) 
             m.x2_0[j,p,k].set_value( m.x2set[j,p].value + k/m.nfe*(m.x2ref[j,p] - m.x2set[j,p].value) ) 
-        m.M1_0[j,k].set_value( m.M1set[j].value + k/m.nfe*(m.M1ref[j] - m.M1set[j].value) ) 
-        m.M2_0[j,k].set_value( m.M2set[j].value + k/m.nfe*(m.M2ref[j] - m.M2set[j].value) ) 
+        m.M1_0[j,k].set_value( m.M1set[j].value + k/m.nfe*(m.M1ref[j].value - m.M1set[j].value) ) 
+        m.M2_0[j,k].set_value( m.M2set[j].value + k/m.nfe*(m.M2ref[j].value - m.M2set[j].value) ) 
 for j in m.set_1_NT:
     for p in m.set_1_2:
         m.x1_0[j,p,0].fix(m.x1set[j,p].value)
@@ -292,7 +322,14 @@ for f in m.fe:
 ### End initialization ###
 p = open('plant.txt','w')
 
-p.write('%2i'%'k' + '%8s'%'VB1')
+#p.write('%2i'%'k' + '%8s'%'VB1')
+
+err_x = {}
+err_M = {}
+
+
+writer = csv.writer(open('data.csv','a',newline=''), delimiter=',')
+writer.writerow(['k','cp','err_x','err_M','F','M1_F','M2_F','M1_NTm1','M2_NTm1','LT1','VB1','D1','B1','LT2','VB2','D2','B2'])
 
 # get random noises parameters for disturbances:
 for k in m.set_0_Km1:
@@ -366,7 +403,21 @@ for k in m.set_0_Km1:
         m.state_act[3*m.NT+j,k+1].set_value(m.x2set[j,1].value)
         m.state_act[4*m.NT+j,k+1].set_value(m.x2set[j,2].value)
         m.state_act[5*m.NT+j,k+1].set_value(m.M2set[j].value)
+    
+    for c in m.cp:
+        err_x[(k,c)] = sum( sum( (m.x1_r[i,j,c].value-m.x1ref[i,j])**2 + \
+                                + (m.x2_r[i,j,c].value-m.x2ref[i,j])**2 \
+                                for j in m.set_1_2) for i in m.set_1_NT)
+        err_M[(k,c)] = sum( (m.M1_r[i,c].value-m.M1ref[i].value)**2 + \
+                             (m.M2_r[i,c].value-m.M2ref[i].value)**2 \
+                             for i in m.set_1_NT)
 
+    for c in m.cp: 
+        writer.writerow([k,c,err_x[(k,c)],err_M[(k,c)],m.F_r.value,m.M1_r[m.NF,c].value,\
+            m.M2_r[m.NF,c].value, m.M1_r[m.NT-1,c].value, m.M2_r[m.NT-1,c].value,\
+            m.LT1[0].value, m.VB1[0].value, m.D1[0].value, m.B1[0].value, \
+            m.LT2[0].value, m.VB2[0].value, m.D2[0].value, m.B2[0].value ])
+                    
     m.normx[k+1].set_value( sum( m.state_act[s,k+1]**2 for s in m.state_set)**(0.5)) 
 
     for q in m.fem:
@@ -414,16 +465,16 @@ for k in m.set_0_Km1:
             for q in m.fem:
                 m.M1[i,q,c].set_value( m.M1[i,q+1,c].value )
                 m.M2[i,q,c].set_value( m.M2[i,q+1,c].value ) 
-            m.M1[i,m.nfe-1,c].set_value( m.M1ref[i] )
-            m.M2[i,m.nfe-1,c].set_value( m.M2ref[i] )
+            m.M1[i,m.nfe-1,c].set_value( m.M1ref[i].value )
+            m.M2[i,m.nfe-1,c].set_value( m.M2ref[i].value )
 
 
     for i in m.set_1_NT:
         for q in m.fe:
             m.M1_0[i,q].set_value( m.M1_0[i,q+1].value )
             m.M2_0[i,q].set_value( m.M2_0[i,q+1].value )
-        m.M1_0[i,m.nfe].set_value( m.M1ref[i] )
-        m.M2_0[i,m.nfe].set_value( m.M2ref[i] )
+        m.M1_0[i,m.nfe].set_value( m.M1ref[i].value )
+        m.M2_0[i,m.nfe].set_value( m.M2ref[i].value )
         m.M1_0[i,0].unfix()
         m.M2_0[i,0].unfix()
 
