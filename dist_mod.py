@@ -36,7 +36,7 @@ m.track_switch = Param(initialize=1)
 m.pen_switch   = Param(initialize=1)   # penalties/soft constraints associated with ... ? 
 m.noise_switch = Param(initialize=1)   # important for tracking case? (else solve same problem repeatedly) 
                                        # could add other disturbance model... 
-m.regu_frac    = Param(initialize=0)
+m.regu_frac    = Param(initialize=1)
 m.rho          = Param(initialize=10**4) # l1 penalty weight 
 m.smt          = Param(initialize=0.01)  # I can only assume smoothmax parameter 
 m.F_dev        = Param(initialize=0.1)   # variances for normal-dist noise? 
@@ -91,6 +91,9 @@ m.ncp = 3
 m.fe  = Set(initialize=range(0,m.nfe))
 m.fep = Set(initialize=range(0,m.nfe+1))
 m.set_1_nfe = Set(initialize=range(1,m.nfe+1))
+m.set_1_nfem1 = Set(initialize=range(1,m.nfe))
+m.set_1_nfem2 = Set(initialize=range(1,m.nfe-1))
+m.fem = Set(initialize=range(0,m.nfe-1))
 m.cp  = Set(initialize=range(1,m.ncp+1))
 # perform collocation later (after constraints added)
 
@@ -113,8 +116,9 @@ m.state_act   = Param(m.state_set,m.set_0_K,mutable=True)
 #m.state_set.pprint()
 
 # what is sol_stat? 
-# "solved-for state" "measured state"
-m.sol_stat    = Param(m.set_0_Km1,mutable=True) 
+# solver status 
+# m.sol_stat    = Param(m.set_0_Km1,mutable=True) 
+m.sol_stat    = {} 
 # actual or predicted: 
 m.step_cost   = Param(m.set_0_Km1,mutable=True)        
 # ^figure this out from .run file 
@@ -124,8 +128,8 @@ m.avg_cost    = Param(mutable=True)
 m.vkmin1      = Param(mutable=True)        
 m.lkmin1      = Param(mutable=True)       
 m.vtr         = Param(m.set_m1_Km1,mutable=True)
-m.termepsk    = Param(m.set_0_Km1)        
-m.descepsk    = Param(m.set_0_Km1)      
+m.termepsk    = Param(m.set_0_Km1,initialize=0,mutable=True)        
+m.descepsk    = Param(m.set_0_Km1,initialize=0,mutable=True)      
 m.ltr         = Param(m.set_m1_Km1,mutable=True) 
 m.normx       = Param(m.set_0_K,mutable=True)         
 m.sigcosttest = Param(m.set_1_2,range(1,8))
@@ -904,11 +908,11 @@ for i in m.fe: VB1_dict[i] = 4.008
 m.VB1 = Var(m.fe,within=NonNegativeReals, bounds=(0,10), initialize=VB1_dict)
 
 # component fraction liquid and vapor
-m.y1   = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,bounds=(0,1),initialize=0.3) # vapor frac
-m.x1   = Var(m.set_1_NT,  m.set_1_2,m.fe,m.cp,bounds=(0,1),initialize=0.4) # liquid frac
-m.x1_0 = Var(m.set_1_NT,m.set_1_2,m.fep,bounds=(0,1))
-m.M1_0 = Var(m.set_1_NT,m.fep,within=NonNegativeReals)  
-m.M1   = Var(m.set_1_NT,m.fe,m.cp,within=NonNegativeReals,initialize=0.5)                        # holdup
+m.y1   = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,initialize=0.3) # vapor frac
+m.x1   = Var(m.set_1_NT,  m.set_1_2,m.fe,m.cp,initialize=0.4) # liquid frac
+m.x1_0 = Var(m.set_1_NT,m.set_1_2,m.fep)
+m.M1_0 = Var(m.set_1_NT,m.fep) # ,within=NonNegativeReals)  
+m.M1   = Var(m.set_1_NT,m.fe,m.cp,initialize=0.5) # within=NonNegativeReals)                       # holdup
 m.V1   = Var(m.set_1_NTm1,m.fe,initialize=1)                             # vapor flow
 m.L1   = Var(m.set_2_NT,m.fe,m.cp,initialize=1)                          # liquid flow
 m.L1_0 = Var(m.set_2_NT,m.fep)                                       
@@ -960,8 +964,8 @@ def B1lower_rule(m,f):
 m.B1lower = Constraint(m.fe,rule=B1lower_rule)
 
 # VLE equation split
-m.y_1_1 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,within=NonNegativeReals,initialize=0.2)
-m.y_1_2 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,within=NonNegativeReals,initialize=0.7)
+m.y_1_1 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,initialize=0.2)
+m.y_1_2 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,initialize=0.7)
 # These variables are "defined" (per ampl) according to others
 # I think this funcionality is best reproduced by pyomo expressions
 def y_1_1_0_rule(m,i,j,f):
@@ -997,27 +1001,27 @@ m.TC1upper = Constraint(m.set_1_NT,m.fep,rule=TC1upper_rule)
 # (the *_r constraints, obviously...) 
 # (why only defined at col points?)
 # only need values for one sampling period at a time 
-m.y1_r    = Var(m.set_1_NTm1,m.set_1_2,m.cp,bounds=(0,1),initialize=0.3) # vapor comp
-m.x1_r    = Var(m.set_1_NT,m.set_1_2,m.cp,bounds=(0,1),initialize=0.4)   # liquid comp
-m.M1_r    = Var(m.set_1_NT,m.cp,within=NonNegativeReals,initialize=0.5)             # holdup
-m.L1_r    = Var(m.set_2_NT,m.cp,within=NonNegativeReals,initialize=1)               # liquid flow
-m.y_1_1_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,within=NonNegativeReals,initialize=0.2)
-m.y_1_2_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,within=NonNegativeReals,initialize=0.7)
+m.y1_r    = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.3) # vapor comp
+m.x1_r    = Var(m.set_1_NT,m.set_1_2,m.cp,initialize=0.4)   # liquid comp
+m.M1_r    = Var(m.set_1_NT,m.cp,initialize=0.5)             # holdup
+m.L1_r    = Var(m.set_2_NT,m.cp,initialize=1)               # liquid flow
+m.y_1_1_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.2)
+m.y_1_2_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.7)
 
 
 ###################
 ## SECOND COLUMN ##
 ###################
 
-m.LT2 = Var(m.fe,within=NonNegativeReals, bounds=(0,10), initialize=2.13827)
-m.VB2 = Var(m.fe,within=NonNegativeReals, bounds=(0,10), initialize=2.40367)
+m.LT2 = Var(m.fe,bounds=(0,10), initialize=2.13827)
+m.VB2 = Var(m.fe,bounds=(0,10), initialize=2.40367)
 
 # component fraction liquid and vapor
-m.y2   = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,bounds=(0,1),initialize=0.5) # vapor frac
-m.x2   = Var(m.set_1_NT,  m.set_1_2,m.fe,m.cp,bounds=(0,1),initialize=0.4) # liquid frac
-m.x2_0 = Var(m.set_1_NT,m.set_1_2,m.fep,bounds=(0,1))
-m.M2_0 = Var(m.set_1_NT,m.fep,within=NonNegativeReals)  
-m.M2   = Var(m.set_1_NT,m.fe,m.cp,within=NonNegativeReals,initialize=0.5)                        # holdup
+m.y2   = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,initialize=0.5) # vapor frac
+m.x2   = Var(m.set_1_NT,  m.set_1_2,m.fe,m.cp,initialize=0.4) # liquid frac
+m.x2_0 = Var(m.set_1_NT,m.set_1_2,m.fep)
+m.M2_0 = Var(m.set_1_NT,m.fep)  
+m.M2   = Var(m.set_1_NT,m.fe,m.cp,initialize=0.5)                        # holdup
 m.V2   = Var(m.set_1_NTm1,m.fe,initialize=1)                             # vapor flow
 m.L2   = Var(m.set_2_NT,m.fe,m.cp,initialize=1)                          # liquid flow
 m.L2_0 = Var(m.set_2_NT,m.fep)                                       
@@ -1079,8 +1083,8 @@ def const47_rule(m,f):
 m.const47 = Constraint(m.fep,rule=const47_rule)
 
 # VLE equation split
-m.y_2_1 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,within=NonNegativeReals,initialize=0.3)
-m.y_2_2 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,within=NonNegativeReals,initialize=0.8)
+m.y_2_1 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,initialize=0.3)
+m.y_2_2 = Var(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,initialize=0.8)
 # These variables are "defined" (per ampl) according to others
 # I think this funcionality is best reproduced by pyomo expressions
 def y_2_1_0_rule(m,i,j,f):
@@ -1109,12 +1113,12 @@ def TC2upper_rule(m,i,f):
 m.TC2upper = Constraint(m.set_1_NT,m.fep,rule=TC2upper_rule)
 
 # real variables with uncertainty
-m.y2_r    = Var(m.set_1_NTm1,m.set_1_2,m.cp,bounds=(0,1),initialize=0.3) # vapor comp
-m.x2_r    = Var(m.set_1_NT,m.set_1_2,m.cp,bounds=(0,1),initialize=0.4)   # liquid comp
-m.M2_r    = Var(m.set_1_NT,m.cp,within=NonNegativeReals,initialize=0.5)             # holdup
-m.L2_r    = Var(m.set_2_NT,m.cp,within=NonNegativeReals,initialize=1)               # liquid flow
-m.y_2_1_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,bounds=(0,1),initialize=0.2)
-m.y_2_2_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,bounds=(0,1),initialize=0.7)
+m.y2_r    = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.3) # vapor comp
+m.x2_r    = Var(m.set_1_NT,m.set_1_2,m.cp,initialize=0.4)   # liquid comp
+m.M2_r    = Var(m.set_1_NT,m.cp,initialize=0.5)             # holdup
+m.L2_r    = Var(m.set_2_NT,m.cp,initialize=1)               # liquid flow
+m.y_2_1_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.2)
+m.y_2_2_r = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.7)
 
 
 ####################################
@@ -1324,7 +1328,7 @@ m.const21_2 = Constraint(m.set_1_NT,m.set_1_2,m.fe,m.cp,rule=const21_2_rule)
 def const21_2_r_rule(m,i,j,c):
     return m.x1dot_r[i,j,c]*m.M1_r[i,c] == (m.Mx1dot_r[i,j,c] - \
         m.x1_r[i,j,c]*m.M1dot_r[i,c])
-m.const21_2_rule = Constraint(m.set_1_NT,m.set_1_2,m.cp,rule=const21_2_r_rule)
+m.const21_2_r = Constraint(m.set_1_NT,m.set_1_2,m.cp,rule=const21_2_r_rule)
 
 m.x1set = Param(m.set_1_NT,m.set_1_2,mutable=True,
         initialize={  (1,1): 1.456723e-02 ,  (1,2): 3.356477e-01,
@@ -1345,7 +1349,7 @@ m.x1set = Param(m.set_1_NT,m.set_1_2,mutable=True,
                      (16,1): 4.371110e-01 , (16,2): 3.726090e-01,
                      (17,1): 4.711024e-01 , (17,2): 3.420097e-01,
                      (18,1): 5.018445e-01 , (18,2): 3.142148e-01,
-                    (19,1): 5.290693e-01 , (19,2): 2.895293e-01,
+                     (19,1): 5.290693e-01 , (19,2): 2.895293e-01,
                      (20,1): 5.527306e-01 , (20,2): 2.680316e-01,
                      (21,1): 5.729582e-01 , (21,2): 2.496242e-01,
                      (22,1): 6.411449e-01 , (22,2): 2.432636e-01,
@@ -1483,7 +1487,7 @@ m.const23 = Constraint(m.set_1_NTm1,m.set_1_2,m.fe,m.cp,rule=const23_rule)
 
 def const23_r_rule(m,i,j,c):
     return m.y_2_2_r[i,j,c] == ((m.x2_r[i,1,c]*(m.alpha[1]-1)+m.x2_r[i,2,c]*(m.alpha[2]-1))+1)
-m.const23_r = Constraint(m.set_1_NTm1,m.set_1_2,m.cp,rule=const2_r_rule)
+m.const23_r = Constraint(m.set_1_NTm1,m.set_1_2,m.cp,rule=const23_r_rule)
 
 # Vapor-liquid equilibria (multicomponent ideal VLE
 # Stichlmair-Fair, 'Distillation', p.36, 1998)
@@ -1633,7 +1637,7 @@ m.const41_r = Constraint(m.cp,rule=const41_r_rule)
 
 def const42_rule(m,j,f,c):
     return m.Mx2dot[NT,j,f,c] == m.V2[NT-1,f]*m.y2[NT-1,j,f,c] - m.L2[NT,f,c]*m.x2[NT,j,f,c] - m.D2[f]*m.x2[NT,j,f,c] 
-m.const42 = Constraint(m.set_1_2,m.fe,m.cp,rule=const21_rule) 
+m.const42 = Constraint(m.set_1_2,m.fe,m.cp,rule=const42_rule) 
 
 def const42_r_rule(m,j,c):
     return m.Mx2dot_r[NT,j,c] == m.V2[NT-1,0]*m.y2_r[NT-1,j,c] - m.L2_r[NT,c]*m.x2_r[NT,j,c] - m.D2[0]*m.x2_r[NT,j,c] 
@@ -1648,7 +1652,7 @@ m.const42_2 = Constraint(m.set_1_NT,m.set_1_2,m.fe,m.cp,rule=const42_2_rule)
 
 def const42_2_r_rule(m,i,j,c):
     return m.x2dot_r[i,j,c]*m.M2_r[i,c] == (m.Mx2dot_r[i,j,c] - m.x2_r[i,j,c]*m.M2dot_r[i,c])
-m.const42_2_rule = Constraint(m.set_1_NT,m.set_1_2,m.cp,rule=const42_2_r_rule)
+m.const42_2_r = Constraint(m.set_1_NT,m.set_1_2,m.cp,rule=const42_2_r_rule)
 
 # here lies a variable/expression definition for x2dot which is commented out
 
@@ -1915,7 +1919,7 @@ m.tracking = Expression(m.fe,rule=tracking_rule)
 #                      m.y2_w*(m.y2_0[i,j,f]-m.y2ref[i,j])**2 \
 #                      for j in m.set_1_2) for i in m.set_1_NTm1) 
 # m.regu_x_y = Expression(m.fe,rule=regu_x_y_rule)
-# 
+# e
 # def regu_V_L_rule(m,f):
 #     return sum( m.V1_w[i]*(m.V1[i,f]-m.V1ref[i])**2 + m.V2_w[i]*(m.V2[i,f]-m.V2ref[i])**2 \
 #            for i in m.set_1_NTm1) + \
