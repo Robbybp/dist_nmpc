@@ -4,6 +4,7 @@ from pyomo.dae import *
 from dist_mod import m 
 from pyomo.core.kernel.expr import exp,sqrt 
 from numpy.random import normal as nrn 
+from pyutilib.services import TempfileManager
 import csv
 
 __author__ = 'Robert Parker'
@@ -12,6 +13,7 @@ __author__ = 'Robert Parker'
 # m.nominal_zF[2].set_value(0.2)
 # m.nominal_zF[3].set_value(0.4)
 
+TempfileManager.tempdir="/home/rparker1/dist_nmpc/steady_state"
 solver = SolverFactory('ipopt') 
 solver.options['tol'] = 1e-6
 solver.options['max_iter'] = 10000
@@ -164,7 +166,11 @@ m.pV.set_value( m.nominal_pV )
 m.qF.set_value( m.nominal_qF ) 
 for i in m.set_1_3: m.zF[i].set_value( m.nominal_zF[i] ) 
 
-m.write('dist.nl')
+#m.write('dist.row')
+#m.write('dist.col')
+# ^does not work
+m.write('dist.nl',io_options={'symbolic_solver_labels':True})
+
 # m.const1_r.display()
 # m.y_1_1_r.display()
 # m.x1_r.display()
@@ -180,6 +186,8 @@ m.write('dist.nl')
 #     con.display() 
 # m.display()
 results = solver.solve(m,tee=True) 
+
+m.write('dist.nl',io_options={'symbolic_solver_labels':True})
 
 with open('r0.txt', 'w') as f:
     m.display(ostream=f)

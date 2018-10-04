@@ -913,7 +913,8 @@ m.B1   = Var(initialize=0.83)                                       # bottoms fl
 
 # slack variables
 m.x1eps  = Var(m.set_1_NT,m.set_1_2,within=NonNegativeReals,initialize=0)
-m.M1eps  = Var(m.set_1_NT,within=NonNegativeReals,initialize=0)
+m.M1_l_eps  = Var(m.set_1_NT,within=NonNegativeReals,initialize=0)
+m.M1_u_eps = Var(m.set_1_NT,within=NonNegativeReals,initialize=0)
 m.V1eps  = Var(m.set_1_NTm1,within=NonNegativeReals,initialize=0)
 m.L1eps  = Var(m.set_2_NT,within=NonNegativeReals,initialize=0)
 m.D1eps  = Var(within=NonNegativeReals,initialize=0)
@@ -929,16 +930,16 @@ def x1lower_rule(m,i,j):
 m.x1lower = Constraint(m.set_1_NT,m.set_1_2,rule=x1lower_rule)
 
 def M1lower_rule(m,i):
-    return m.M1[i] >= 0.25 - m.M1eps[i]
-m.M1lower = Constraint(m.set_1_NT,rule=M1lower_rule)
+    return m.M1[i] >= 0.25 - m.M1_l_eps[i]
+m.M1lower = Constraint(m.set_2_NTm1,rule=M1lower_rule)
 
 def M1upper_rule(m,i):
-    return m.M1[i] <= 0.75 + m.M1eps[i]
+    return m.M1[i] <= 0.75 + m.M1_u_eps[i]
 m.M1upper = Constraint(m.set_2_NTm1,rule=M1upper_rule)
 
-def M1_B_upper_rule(m,i):
-    return m.M1[i] <= 6.0 + m.M1eps[i]
-m.M1_B_upper = Constraint([1,NT],rule=M1_B_upper_rule)
+#def M1_B_upper_rule(m,i):
+#    return m.M1[i] <= 6.0 + m.M1eps[i]
+#m.M1_B_upper = Constraint([1,NT],rule=M1_B_upper_rule)
 
 def V1lower_rule(m,i):
     return m.V1[i] >= 0 - m.V1eps[i]
@@ -965,6 +966,7 @@ m.y_1_2 = Var(m.set_1_NTm1,m.set_1_2,initialize=0.7)
 #    return m.x1[i,j]*m.alpha_m[j,j] 
 #m.y_1_1_0 = Expression(m.set_1_NTm1,m.set_1_2,rule=y_1_1_0_rule)
 #
+
 #def y_1_2_0_rule(m,i,j):
 #    return ((m.x1[i,1]*(m.alpha[1]-1)+m.x1_0[i,2]*(m.alpha[2]-1))+1)
 #m.y_1_2_0 = Expression(m.set_1_NTm1,m.set_1_2,rule=y_1_2_0_rule)
@@ -980,13 +982,13 @@ m.TC1 = Var(m.set_1_NT,initialize=380)
 # m.SET3 = Var(initialize=-270)
 
 # soft constraints
-def TC1lower_rule(m,i):
-    return m.TC1[i] >= 350 # - m.TC1eps[i]
-m.TC1lower = Constraint(m.set_1_NT,rule=TC1lower_rule)
-
-def TC1upper_rule(m,i):
-    return m.TC1[i] <= 412 # + m.TC1eps[i]
-m.TC1upper = Constraint(m.set_1_NT,rule=TC1upper_rule)
+#def TC1lower_rule(m,i):
+#    return m.TC1[i] >= 350 # - m.TC1eps[i]
+#m.TC1lower = Constraint(m.set_1_NT,rule=TC1lower_rule)
+#
+#def TC1upper_rule(m,i):
+#    return m.TC1[i] <= 412 # + m.TC1eps[i]
+#m.TC1upper = Constraint(m.set_1_NT,rule=TC1upper_rule)
 
 # real states (according to plant model) 
 #m.y1_r    = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.3) # vapor comp
@@ -1016,7 +1018,8 @@ m.B2   = Var(initialize=0.56)                                       # bottoms fl
 # slack variable
 m.x2eps   = Var(m.set_1_NT,m.set_1_2,within=NonNegativeReals,initialize=0)
 m.x2ceps  = Var(within=NonNegativeReals,initialize=0)
-m.M2eps   = Var(m.set_1_NT,within=NonNegativeReals,initialize=0)
+m.M2_l_eps   = Var(m.set_1_NT,within=NonNegativeReals,initialize=0)
+m.M2_u_eps = Var(m.set_1_NT,within=NonNegativeReals,initialize=0)
 m.V2eps   = Var(m.set_1_NTm1,within=NonNegativeReals,initialize=0)
 m.L2eps   = Var(m.set_2_NT,within=NonNegativeReals,initialize=0)
 m.D2eps   = Var(within=NonNegativeReals,initialize=0)
@@ -1032,16 +1035,16 @@ def x2lower_rule(m,i,j):
 m.x2lower = Constraint(m.set_1_NT,m.set_1_2,rule=x2lower_rule)
 
 def M2lower_rule(m,i):
-    return m.M2[i] >= 0.25 - m.M2eps[i]
-m.M2lower = Constraint(m.set_1_NT,rule=M2lower_rule)
+    return m.M2[i] >= 0.25 - m.M2_l_eps[i]
+m.M2lower = Constraint(m.set_2_NTm1,rule=M2lower_rule)
 
 def M2upper_rule(m,i):
-    return m.M2[i] <= 0.75 + m.M2eps[i]
+    return m.M2[i] <= 0.75 + m.M2_u_eps[i]
 m.M2upper = Constraint(m.set_2_NTm1,rule=M2upper_rule)
 
-def M2_B_upper_rule(m,i):
-    return m.M2[i] <= 6.0 + m.M2eps[i]
-m.M2_B_upper = Constraint([1,NT],rule=M2_B_upper_rule)
+#def M2_B_upper_rule(m,i):
+#    return m.M2[i] <= 6.0 + m.M2eps[i]
+#m.M2_B_upper = Constraint([1,NT],rule=M2_B_upper_rule)
 
 def V2lower_rule(m,i):
     return m.V2[i] >= 0 - m.V2eps[i]
@@ -1092,13 +1095,13 @@ m.y_2_2 = Var(m.set_1_NTm1,m.set_1_2,initialize=0.8)
 m.TC2 = Var(m.set_1_NT,initialize=380)
 
 # soft constraints
-def TC2lower_rule(m,i):
-    return m.TC2[i] >= 350 - m.TC2eps[i]
-m.TC2lower = Constraint(m.set_1_NT,rule=TC2lower_rule)
-
-def TC2upper_rule(m,i):
-    return m.TC2[i] <= 412 + m.TC2eps[i]
-m.TC2upper = Constraint(m.set_1_NT,rule=TC2upper_rule)
+#def TC2lower_rule(m,i):
+#    return m.TC2[i] >= 350 - m.TC2eps[i]
+#m.TC2lower = Constraint(m.set_1_NT,rule=TC2lower_rule)
+#
+#def TC2upper_rule(m,i):
+#    return m.TC2[i] <= 412 + m.TC2eps[i]
+#m.TC2upper = Constraint(m.set_1_NT,rule=TC2upper_rule)
 
 # real variables with uncertainty
 #m.y2_r    = Var(m.set_1_NTm1,m.set_1_2,m.cp,initialize=0.3) # vapor comp
@@ -1179,24 +1182,26 @@ def const14_rule(m,i,j):
         m.V1[i]*m.y1[i,j] 
 m.const14 = Constraint(m.set_NFp1_NTm1,m.set_1_2,rule=const14_rule)
 
+# Feed:
+
 def const15_rule(m):
     return 0 == m.L1[NF+1] - m.L1[NF] + \
         m.V1[NF-1] - m.V1[NF] + m.F
 m.const15 = Constraint(rule=const15_rule)
 
-def const16_rule(m):
-    return 0 == m.L1[NF+1]*m.x1[NF+1,1]-\
-        m.L1[NF]*m.x1[NF,1] + \
-        m.V1[NF-1]*m.y1[NF-1,1]-m.V1[NF]*m.y1[NF,1] +\
-        m.F*m.zF[1] 
-m.const16 = Constraint(rule=const16_rule)
+def const16_rule(m,j):
+    return 0 == m.L1[NF+1]*m.x1[NF+1,j]-\
+        m.L1[NF]*m.x1[NF,j] + \
+        m.V1[NF-1]*m.y1[NF-1,j]-m.V1[NF]*m.y1[NF,j] +\
+        m.F*m.zF[j] 
+m.const16 = Constraint(m.set_1_2,rule=const16_rule)
 
-def const17_rule(m):
-    return 0 == m.L1[NF+1]*m.x1[NF+1,2]-\
-        m.L1[NF]*m.x1[NF,2] + \
-        m.V1[NF-1]*m.y1[NF-1,2]- m.V1[NF]*m.y1[NF,2]+\
-        m.F*m.zF[2] 
-m.const17 = Constraint(rule=const17_rule) 
+#def const17_rule(m):
+#    return 0 == m.L1[NF+1]*m.x1[NF+1,2]-\
+#        m.L1[NF]*m.x1[NF,2] + \
+#        m.V1[NF-1]*m.y1[NF-1,2]- m.V1[NF]*m.y1[NF,2]+\
+#        m.F*m.zF[2] 
+#m.const17 = Constraint(rule=const17_rule) 
 
 ### Reboiler, assumed to be an equilibrium stage 
 
@@ -1586,7 +1591,8 @@ def penalty_2_rule(m):
 m.penalty_2 = Expression(rule=penalty_2_rule)
 
 def penalty_M_TC_rule(m):
-    return sum(m.M1eps[i] + m.M2eps[i] + m.TC1eps[i] + m.TC2eps[i] for i in m.set_1_NT)
+    return sum(m.M1_l_eps[i] + m.M1_u_eps[i] + m.M2_l_eps[i] + m.M2_u_eps[i] + \
+               m.TC1eps[i] + m.TC2eps[i] for i in m.set_1_NT)
 m.penalty_M_TC = Expression(rule=penalty_M_TC_rule)
 
 def penalty_x_y_rule(m):
